@@ -2,10 +2,15 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YamaNavi Discover</title>
 <style>
 :root{font-family:system-ui,-apple-system,'Yu Gothic',sans-serif;color:#183329;background:#f2f6f3}*{box-sizing:border-box}body{margin:0}header{background:#17573e;color:white;padding:26px 16px}header div,main{max-width:960px;margin:auto}h1{margin:0;font-size:1.8rem}header p{margin:8px 0 0;color:#dcece3}main{padding:22px 16px 60px}.panel{background:white;padding:20px;border-radius:14px;box-shadow:0 2px 12px #1232;margin-bottom:18px}h2{margin:0 0 14px;font-size:1.2rem}.regions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.regions label{border:1px solid #d4e1d9;border-radius:9px;padding:11px;cursor:pointer}.regions input{accent-color:#176344}button{background:#176344;color:white;border:0;border-radius:9px;padding:13px 20px;font-weight:700;cursor:pointer;margin-top:16px}button:hover{background:#0f4630}button:disabled{opacity:.5;cursor:wait}.muted{color:#607469;font-size:.9rem}.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px}.mountain{border:1px solid #e0e9e3;border-radius:10px;padding:15px}.mountain h3{margin:0 0 8px;font-size:1.08rem}.mountain p{margin:5px 0}.mountain a{color:#116143}.status{margin:10px 0;color:#52685b}.note{font-size:.85rem;color:#65766c;line-height:1.6}
-input[type=date]{font:inherit;padding:10px;border:1px solid #d4e1d9;border-radius:9px;margin-top:8px}.weather{background:#eef7f1;border-radius:7px;padding:8px;margin:8px 0}.warn{color:#9a5719}button.secondary{margin-left:8px;background:#52776a}</style></head><body><header><div><h1>⛰ YamaNavi Discover</h1><p>まだ知らない山との出会いを。</p></div></header><main>
-<section class="panel"><h2>① 探したい地域を選択</h2><div class="regions" id="regions"></div><p><label for="hikeDate"><strong>登山予定日</strong></label><br><input type="date" id="hikeDate"></p><button id="search">山を探す</button><p class="muted">複数地域を選べます。初期版では位置座標による大まかな地域分類です。</p></section>
+select,input[type=number]{font:inherit;padding:10px;border:1px solid #d4e1d9;border-radius:9px;max-width:100%;width:100%}.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:15px}.filters label{display:block;font-weight:700;margin-bottom:5px}.filters .field{min-width:0}.hint{font-size:.82rem;color:#607469}input[type=date]{font:inherit;padding:10px;border:1px solid #d4e1d9;border-radius:9px;margin-top:8px}.weather{background:#eef7f1;border-radius:7px;padding:8px;margin:8px 0}.warn{color:#9a5719}button.secondary{margin-left:8px;background:#52776a}</style></head><body><header><div><h1>⛰ YamaNavi Discover</h1><p>まだ知らない山との出会いを。</p></div></header><main>
+<section class="panel"><h2>① 探したい地域を選択</h2><div class="regions" id="regions"></div><p><label for="hikeDate"><strong>登山予定日</strong></label><br><input type="date" id="hikeDate"></p><div class="filters">
+<div class="field"><label for="minEle">最低標高（m）</label><input type="number" id="minEle" min="0" max="9000" step="100" placeholder="指定なし"></div>
+<div class="field"><label for="maxEle">最高標高（m）</label><input type="number" id="maxEle" min="0" max="9000" step="100" placeholder="指定なし"></div>
+<div class="field"><label for="sortEle">表示順</label><select id="sortEle"><option value="desc">標高の高い順</option><option value="asc">標高の低い順</option></select></div>
+<div class="field"><label for="weatherFilter">天気の条件</label><select id="weatherFilter"><option value="all">指定なし（すべて）</option><option value="clear">晴れ・曇り</option><option value="dry30">降水確率30％以下</option><option value="dry10">降水確率10％以下</option><option value="clear30">晴れ・曇り＋降水確率30％以下</option></select></div>
+</div><button id="search">山を探す</button><p class="muted">複数地域を選べます。初期版では位置座標による大まかな地域分類です。</p></section>
 <section class="panel"><h2>② 山の候補 <span id="count"></span></h2><p id="status" class="status">データを読み込み中です…</p><div id="results" class="results"></div><button id="more" style="display:none">別の候補を探す</button></section>
-<p class="note">出典：© OpenStreetMap contributors（ODbL）。山頂地点データであり、登山道の存在・通行可否・安全性は未確認です。天気予報はOpen-Meteoの参考値です。山頂の局地的な気象や登山道の安全を保証しません。登山履歴との照合は今後追加します。</p>
+<p class="note">出典：© OpenStreetMap contributors（ODbL）。山頂地点データであり、登山道の存在・通行可否・安全性は未確認です。天気予報はOpen-Meteoの参考値です。山頂の局地的な気象や登山道の安全を保証しません。標高不明の地点は除外しています。天気条件は表示候補を順に確認する方式です。登山履歴との照合は今後追加します。</p>
 </main><script>
 const FILE='yama_peaks_japan_all_47_prefectures.geojson';
 // 座標による暫定的な地域判定。県境に近い地点は誤分類することがあります。
@@ -20,7 +25,7 @@ const areas=[
 {name:'四国',test:(x,y)=>y>=32.6&&y<34.7&&x>=132.0&&x<134.9},
 {name:'九州・沖縄',test:(x,y)=>x<132.4&&y<34.3}
 ];
-let peaks=[],remaining=[],requestId=0;
+let peaks=[],remaining=[],requestId=0,filteredCount=0;
 const $=id=>document.getElementById(id);
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const now=new Date();const last=new Date(now);last.setDate(last.getDate()+15);
@@ -31,10 +36,73 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function weatherLabel(code){if(code===0)return '快晴';if(code<=3)return '晴れ・曇り';if(code===45||code===48)return '霧';if(code>=51&&code<=67)return '雨';if(code>=71&&code<=77)return '雪';if(code>=80&&code<=82)return 'にわか雨';if(code>=85&&code<=86)return 'にわか雪';if(code>=95)return '雷雨';return '天気不明'}
 function score(w){const code=w.weather_code??99;const rain=w.precipitation_probability_max??50;const wind=w.wind_speed_10m_max??20;return (code===0?35:code<=3?25:code>=51?-25:0)-rain*.55-Math.max(0,wind-15)*.7}
-function render(batch,forecasts,warning=''){$('results').innerHTML=batch.map((p,i)=>{const c=p.geometry.coordinates,n=safe(p.properties.name),ele=p.properties.ele,w=forecasts[i],map=`https://www.openstreetmap.org/?mlat=${c[1]}&mlon=${c[0]}#map=13/${c[1]}/${c[0]}`;const info=w?`<p class="weather">${weatherLabel(w.weather_code)} ／ 降水確率 ${w.precipitation_probability_max??'不明'}% ／ 最大風速 ${w.wind_speed_10m_max??'不明'} km/h</p>`:'<p class="muted">天気予報を取得できませんでした</p>';return `<article class="mountain"><h3>${n}</h3><p>${ele&&Number.isFinite(Number(ele))?'標高 '+safe(ele)+' m':'標高情報なし'}</p>${info}<p><a href="${map}" target="_blank" rel="noopener noreferrer">地図で確認 ↗</a></p></article>`}).join('');$('count').textContent=`（${batch.length}件）`;$('status').textContent=`${warning}${warning?' ／ ':''}残りの候補：${remaining.length.toLocaleString()}地点。天気は山頂でなく周辺座標の予報参考値です。`;$('more').style.display=remaining.length?'inline-block':'none';$('search').disabled=false;$('more').disabled=false}
-async function showBatch(){if(!remaining.length){$('status').textContent='候補がありません。地域を変更してください。';return}const token=++requestId;const batch=remaining.splice(0,30),date=$('hikeDate').value;$('status').textContent='候補30地点の天気予報を取得しています…';$('search').disabled=true;$('more').disabled=true;let forecasts=Array(batch.length).fill(null),warning='';try{const lat=batch.map(p=>p.geometry.coordinates[1]).join(','),lon=batch.map(p=>p.geometry.coordinates[0]).join(',');const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FTokyo&forecast_days=16`;const response=await fetch(url);if(!response.ok)throw Error(`HTTP ${response.status}`);const data=await response.json();const places=Array.isArray(data)?data:[data];forecasts=places.map(p=>{const i=p.daily?.time?.indexOf(date)??-1;return i<0?null:{weather_code:p.daily.weather_code?.[i],precipitation_probability_max:p.daily.precipitation_probability_max?.[i],wind_speed_10m_max:p.daily.wind_speed_10m_max?.[i]}});if(forecasts.length!==batch.length)throw Error('予報件数が一致しません');const combined=batch.map((p,i)=>({p,w:forecasts[i]})).sort((a,b)=>(b.w?score(b.w):-999)-(a.w?score(a.w):-999));if(token!==requestId)return;render(combined.map(x=>x.p),combined.map(x=>x.w));return}catch(e){warning='天気予報を取得できなかったため山頂候補のみ表示';console.warn(e)}if(token===requestId)render(batch,forecasts,warning)}
-function search(){if(!peaks.length)return;const selected=[...document.querySelectorAll('#regions input:checked')].map(e=>+e.value);if(!selected.length){$('status').textContent='地域を1つ以上選択してください。';return}if(!$('hikeDate').value||$('hikeDate').value<$('hikeDate').min||$('hikeDate').value>$('hikeDate').max){$('status').textContent='登山日は今日から15日先までを選んでください。';return}remaining=shuffle(peaks.filter(p=>p._regions.some(i=>selected.includes(i))));showBatch()}
+function matchesWeather(w,filter){
+ if(filter==='all')return true;
+ if(!w)return false;
+ const code=w.weather_code,rain=w.precipitation_probability_max;
+ const clear=Number.isFinite(code)&&code<=3;
+ const dry30=Number.isFinite(rain)&&rain<=30;
+ if(filter==='clear')return clear;
+ if(filter==='dry30')return dry30;
+ if(filter==='dry10')return Number.isFinite(rain)&&rain<=10;
+ if(filter==='clear30')return clear&&dry30;
+ return true;
+}
+function render(batch,forecasts,warning=''){
+ $('results').innerHTML=batch.map((p,i)=>{
+ const c=p.geometry.coordinates,n=safe(p.properties.name),ele=p._ele,w=forecasts[i];
+ const map=`https://www.openstreetmap.org/?mlat=${c[1]}&mlon=${c[0]}#map=13/${c[1]}/${c[0]}`;
+ const info=w?`<p class="weather">${weatherLabel(w.weather_code)} ／ 降水確率 ${w.precipitation_probability_max??'不明'}% ／ 最大風速 ${w.wind_speed_10m_max??'不明'} km/h</p>`:'<p class="muted">天気予報を取得できませんでした</p>';
+ return `<article class="mountain"><h3>${n}</h3><p>標高 ${ele.toLocaleString()} m</p>${info}<p><a href="${map}" target="_blank" rel="noopener noreferrer">地図で確認 ↗</a></p></article>`
+ }).join('');
+ $('count').textContent=`（${batch.length}件）`;
+ $('status').textContent=`${warning}${warning?' ／ ':''}標高条件に一致：${filteredCount.toLocaleString()}地点。未確認の候補：${remaining.length.toLocaleString()}地点。予報は山頂の実測値ではありません。`;
+ $('more').style.display=remaining.length?'inline-block':'none';$('search').disabled=false;$('more').disabled=false;
+}
+async function getForecasts(batch,date){
+ const lat=batch.map(p=>p.geometry.coordinates[1]).join(','),lon=batch.map(p=>p.geometry.coordinates[0]).join(',');
+ const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FTokyo&forecast_days=16`;
+ const response=await fetch(url);if(!response.ok)throw Error(`HTTP ${response.status}`);
+ const data=await response.json();const places=Array.isArray(data)?data:[data];
+ if(places.length!==batch.length)throw Error('予報件数が一致しません');
+ return places.map(p=>{const i=p.daily?.time?.indexOf(date)??-1;return i<0?null:{weather_code:p.daily.weather_code?.[i],precipitation_probability_max:p.daily.precipitation_probability_max?.[i],wind_speed_10m_max:p.daily.wind_speed_10m_max?.[i]}});
+}
+async function showBatch(){
+ const token=++requestId,date=$('hikeDate').value,filter=$('weatherFilter').value;
+ if(!remaining.length){render([],[],'条件に合う候補は残っていません');return}
+ $('search').disabled=true;$('more').disabled=true;
+ const matches=[],forecasts=[];let checked=0,failed=false;
+ // 天気条件ありの場合は最大150地点を確認。大量のAPIリクエストを防ぐ。
+ const maxCheck=filter==='all'?30:150;
+ while(remaining.length&&checked<maxCheck&&matches.length<30){
+ const batch=remaining.splice(0,Math.min(30,maxCheck-checked));checked+=batch.length;
+ $('status').textContent=`天気予報を確認中… ${checked}地点を確認（表示候補 ${matches.length}件）`;
+ let weather;
+ try{weather=await getForecasts(batch,date)}catch(e){console.warn(e);failed=true;weather=Array(batch.length).fill(null)}
+ if(token!==requestId)return;
+ for(let i=0;i<batch.length;i++)if(matchesWeather(weather[i],filter)&&matches.length<30){matches.push(batch[i]);forecasts.push(weather[i])}
+ if(failed&&filter!=='all')break;
+ }
+ if(token!==requestId)return;
+ const warning=failed?(filter==='all'?'天気予報の一部を取得できませんでした':'天気予報を取得できず、条件を判定できませんでした'):filter!=='all'&&matches.length<30&&remaining.length?'今回確認した地点では条件に合う山が少なめです':'';
+ render(matches,forecasts,warning);
+}
+function search(){
+ if(!peaks.length)return;
+ const selected=[...document.querySelectorAll('#regions input:checked')].map(e=>+e.value);
+ if(!selected.length){$('status').textContent='地域を1つ以上選択してください。';return}
+ if(!$('hikeDate').value||$('hikeDate').value<$('hikeDate').min||$('hikeDate').value>$('hikeDate').max){$('status').textContent='登山日は今日から15日先までを選んでください。';return}
+ const min=$('minEle').value===''?0:Number($('minEle').value);
+ const max=$('maxEle').value===''?Infinity:Number($('maxEle').value);
+ if(!Number.isFinite(min)||min<0||Number.isNaN(max)||max<0||min>max){$('status').textContent='標高の指定を確認してください（最低標高は最高標高以下）。';return}
+ requestId++;
+ remaining=peaks.filter(p=>p._regions.some(i=>selected.includes(i))&&p._ele>=min&&p._ele<=max);
+ remaining.sort((a,b)=>$('sortEle').value==='asc'?a._ele-b._ele:b._ele-a._ele);
+ filteredCount=remaining.length;
+ if(!remaining.length){render([],[],'指定した地域・標高に一致する山はありません');return}
+ showBatch();
+}
 $('search').onclick=search;$('more').onclick=showBatch;
-fetch(FILE).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{peaks=(d.features||[]).filter(p=>p.geometry?.type==='Point'&&p.properties?.name).map(p=>({...p,_regions:classify(p)}));$('status').textContent=`${peaks.length.toLocaleString()}地点を読み込みました。地域を選んで「山を探す」を押してください。`;$('search').disabled=false}).catch(e=>{$('status').textContent='山頂データを読み込めませんでした。GeoJSONが同じフォルダにあるか確認してください。 '+e.message});
+fetch(FILE).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{peaks=(d.features||[]).filter(p=>p.geometry?.type==='Point'&&p.properties?.name&&p.properties.ele!==undefined&&p.properties.ele!==null&&String(p.properties.ele).trim()!==''&&Number.isFinite(Number(p.properties.ele))&&Number(p.properties.ele)>=0).map(p=>({...p,_ele:Number(p.properties.ele),_regions:classify(p)}));$('status').textContent=`${peaks.length.toLocaleString()}地点（標高がある山頂）を読み込みました。地域を選んで「山を探す」を押してください。`;$('search').disabled=false}).catch(e=>{$('status').textContent='山頂データを読み込めませんでした。GeoJSONが同じフォルダにあるか確認してください。 '+e.message});
 $('search').disabled=true;
 </script></body></html>
