@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YamaNavi Discover</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Yu Gothic',sans-serif;color:#183329;background:#f2f6f3}*{box-sizing:border-box}body{margin:0}header{background:#17573e;color:white;padding:26px 16px}header div,main{max-width:960px;margin:auto}h1{margin:0;font-size:1.8rem}header p{margin:8px 0 0;color:#dcece3}main{padding:22px 16px 60px}.panel{background:white;padding:20px;border-radius:14px;box-shadow:0 2px 12px #1232;margin-bottom:18px}h2{margin:0 0 14px;font-size:1.2rem}.regions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.regions label{border:1px solid #d4e1d9;border-radius:9px;padding:11px;cursor:pointer}.regions input{accent-color:#176344}button{background:#176344;color:white;border:0;border-radius:9px;padding:13px 20px;font-weight:700;cursor:pointer;margin-top:16px}button:hover{background:#0f4630}button:disabled{opacity:.5;cursor:wait}.muted{color:#607469;font-size:.9rem}.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px}.mountain{border:1px solid #e0e9e3;border-radius:10px;padding:15px}.mountain h3{margin:0 0 8px;font-size:1.08rem}.mountain p{margin:5px 0}.mountain a{color:#116143}.status{margin:10px 0;color:#52685b}.note{font-size:.85rem;color:#65766c;line-height:1.6}
+</style></head><body><header><div><h1>⛰ YamaNavi Discover</h1><p>まだ知らない山との出会いを。</p></div></header><main>
+<section class="panel"><h2>① 探したい地域を選択</h2><div class="regions" id="regions"></div><button id="search">山を探す</button><p class="muted">複数地域を選べます。初期版では位置座標による大まかな地域分類です。</p></section>
+<section class="panel"><h2>② 山の候補 <span id="count"></span></h2><p id="status" class="status">データを読み込み中です…</p><div id="results" class="results"></div><button id="more" style="display:none">別の候補を探す</button></section>
+<p class="note">出典：© OpenStreetMap contributors（ODbL）。山頂地点データであり、登山道の存在・通行可否・安全性は未確認です。天気予報・登山履歴との照合は今後追加します。</p>
+</main><script>
+const FILE='yama_peaks_japan_all_47_prefectures.geojson';
+// 座標による暫定的な地域判定。県境に近い地点は誤分類することがあります。
+const areas=[
+{name:'北海道',test:(x,y)=>y>=41.3&&x>=139.2},
+{name:'東北',test:(x,y)=>y>=36.75&&y<41.6&&x>=139.0},
+{name:'関東',test:(x,y)=>y>=34.8&&y<37.2&&x>=138.5},
+{name:'甲信越',test:(x,y)=>y>=35.0&&y<38.7&&x>=137.4&&x<139.9},
+{name:'北陸・東海',test:(x,y)=>y>=33.9&&y<37.5&&x>=135.4&&x<138.8},
+{name:'近畿',test:(x,y)=>y>=33.4&&y<36.2&&x>=134.0&&x<136.8},
+{name:'中国',test:(x,y)=>y>=33.5&&y<36.2&&x>=130.7&&x<134.7},
+{name:'四国',test:(x,y)=>y>=32.6&&y<34.7&&x>=132.0&&x<134.9},
+{name:'九州・沖縄',test:(x,y)=>x<132.4&&y<34.3}
+];
+let peaks=[],remaining=[],lastKey='';
+const $=id=>document.getElementById(id);
+$('regions').innerHTML=areas.map((a,i)=>`<label><input type="checkbox" value="${i}" ${i===2?'checked':''}> ${a.name}</label>`).join('');
+function classify(p){const c=p.geometry?.coordinates;if(!c)return [];return areas.map((a,i)=>a.test(c[0],c[1])?i:-1).filter(i=>i>=0)}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function showBatch(){const batch=remaining.splice(0,30);$('results').innerHTML=batch.map(p=>{const c=p.geometry.coordinates;const n=safe(p.properties.name);const ele=p.properties.ele;const map=`https://www.openstreetmap.org/?mlat=${c[1]}&mlon=${c[0]}#map=13/${c[1]}/${c[0]}`;return `<article class="mountain"><h3>${n}</h3><p>${ele&&Number.isFinite(Number(ele))?'標高 '+safe(ele)+' m':'標高情報なし'}</p><p><a href="${map}" target="_blank" rel="noopener noreferrer">地図で確認 ↗</a></p></article>`}).join('');$('count').textContent=`（${batch.length}件）`;$('status').textContent=batch.length?`残りの候補：${remaining.length.toLocaleString()}地点`:'候補がありません。地域を変更してください。';$('more').style.display=remaining.length?'inline-block':'none'}
+function search(){if(!peaks.length)return;const selected=[...document.querySelectorAll('#regions input:checked')].map(e=>+e.value);if(!selected.length){$('status').textContent='地域を1つ以上選択してください。';return}remaining=shuffle(peaks.filter(p=>p._regions.some(i=>selected.includes(i))));showBatch()}
+$('search').onclick=search;$('more').onclick=showBatch;
+fetch(FILE).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{peaks=(d.features||[]).filter(p=>p.geometry?.type==='Point'&&p.properties?.name).map(p=>({...p,_regions:classify(p)}));$('status').textContent=`${peaks.length.toLocaleString()}地点を読み込みました。地域を選んで「山を探す」を押してください。`;$('search').disabled=false}).catch(e=>{$('status').textContent='山頂データを読み込めませんでした。GeoJSONが同じフォルダにあるか確認してください。 '+e.message});
+$('search').disabled=true;
+</script></body></html>
