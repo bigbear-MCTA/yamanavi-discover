@@ -14,7 +14,7 @@ select,input[type=number]{font:inherit;padding:10px;border:1px solid #d4e1d9;bor
 <p class="note">出典：© OpenStreetMap contributors（ODbL）。名山分類は暫定照合であり、正式な山頂選定や登山可否は未検証です。山頂地点データであり、登山道の存在・通行可否・安全性は未確認です。天気予報はOpen-Meteoの参考値です。山頂の局地的な気象や登山道の安全を保証しません。標高不明の地点は除外しています。天気条件は表示候補を順に確認する方式です。登山履歴との照合は今後追加します。</p>
 </main><script>
 const FILE='yamanavi_meizan_301.geojson';
-// 座標による暫定的な地域判定。県境に近い地点は誤分類することがあります。
+// 座標による暫定地域判定と、確認済み県境山の複数地域登録。
 const areas=[
 {name:'北海道',test:(x,y)=>y>=41.3&&x>=139.2},
 {name:'東北',test:(x,y)=>y>=36.75&&y<41.6&&x>=139.0},
@@ -32,7 +32,52 @@ const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 const now=new Date();const last=new Date(now);last.setDate(last.getDate()+15);
 $('hikeDate').min=today();$('hikeDate').max=`${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;$('hikeDate').value=today();
 $('regions').innerHTML=areas.map((a,i)=>`<label><input type="checkbox" value="${i}" ${i===2?'checked':''}> ${a.name}</label>`).join('');
-function classify(p){const c=p.geometry?.coordinates;if(!c)return [];return areas.map((a,i)=>a.test(c[0],c[1])?i:-1).filter(i=>i>=0)}
+// 地域境界の山は複数地域に表示。県境を正確に判定できる行政界ポリゴンは未導入のため、
+// 確認できた山を明示登録し、それ以外は従来の座標による暫定判定を維持する。
+const borderMountainRegions={
+ '富士山':['甲信越','北陸・東海'],
+ '谷川岳':['関東','甲信越'],
+ '金峰山':['甲信越'],
+ '日光白根山':['関東'],
+ '甲武信ヶ岳':['関東','甲信越'],
+ '雲取山':['関東','甲信越'],
+ '両神山':['関東'],
+ '八ヶ岳':['甲信越'],
+ '赤岳':['甲信越'],
+ '浅間山':['関東','甲信越'],
+ '四阿山':['関東','甲信越'],
+ '草津白根山':['関東'],
+ '白砂山':['関東','甲信越'],
+ '苗場山':['甲信越'],
+ '巻機山':['関東','甲信越'],
+ '至仏山':['関東'],
+ '燧ヶ岳':['東北'],
+ '武尊山':['関東'],
+ '鳥海山':['東北'],
+ '栗駒山':['東北'],
+ '蔵王山':['東北'],
+ '磐梯山':['東北'],
+ '御嶽山':['甲信越','北陸・東海'],
+ '乗鞍岳':['甲信越','北陸・東海'],
+ '白山':['北陸・東海'],
+ '伊吹山':['北陸・東海','近畿'],
+ '大台ヶ原山':['近畿'],
+ '大峰山':['近畿'],
+ '剣山':['四国'],
+ '石鎚山':['四国'],
+ '大山':['関東']
+};
+// 同名山（例：大山）は名前だけでは上書きしない。
+const ambiguousNames=new Set(['大山']);
+function classify(p){
+ const c=p.geometry?.coordinates;if(!c)return [];
+ const listed=(p.properties?.meizan_candidates||[]).map(t=>t.list_name).filter(Boolean);
+ const name=listed.length?listed[0]:p.properties?.name;
+ if(name&&!ambiguousNames.has(name)&&borderMountainRegions[name]){
+  return borderMountainRegions[name].map(r=>areas.findIndex(a=>a.name===r)).filter(i=>i>=0);
+ }
+ return areas.map((a,i)=>a.test(c[0],c[1])?i:-1).filter(i=>i>=0);
+}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function weatherLabel(code){if(code===0)return '快晴';if(code<=3)return '晴れ・曇り';if(code===45||code===48)return '霧';if(code>=51&&code<=67)return '雨';if(code>=71&&code<=77)return '雪';if(code>=80&&code<=82)return 'にわか雨';if(code>=85&&code<=86)return 'にわか雪';if(code>=95)return '雷雨';return '天気不明'}
