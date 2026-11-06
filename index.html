@@ -52,7 +52,7 @@ function render(batch,forecasts,warning=''){
  const listed=(p.properties.meizan_candidates||[]).map(t=>t.list_name).filter(Boolean);
  const listedText=listed.length&&listed[0]!==p.properties.name?`<p class="muted">名山掲載名：${safe(listed[0])}</p>`:'';
  const map=`https://www.openstreetmap.org/?mlat=${c[1]}&mlon=${c[0]}#map=13/${c[1]}/${c[0]}`;
- const info=w?`<p class="weather">${weatherLabel(w.weather_code)} ／ 降水確率 ${w.precipitation_probability_max??'不明'}% ／ 最大風速 ${w.wind_speed_10m_max??'不明'} km/h</p>`:'<p class="muted">天気予報を取得できませんでした</p>';
+ const info=w?`<p class="weather">${weatherLabel(w.weather_code)} ／ 降水確率 ${w.precipitation_probability_max??'不明'}% ／ 最大風速 ${w.wind_speed_10m_max == null ? '不明' : Math.round(w.wind_speed_10m_max / 3.6)} m/s</p>`:'<p class="muted">天気予報を取得できませんでした</p>';
  return `<article class="mountain"><h3>${n}</h3>${tags?`<p>${tags}</p>`:""}${listedText}<p>標高 ${ele.toLocaleString()} m</p>${info}<p><a href="${map}" target="_blank" rel="noopener noreferrer">地図で確認 ↗</a></p></article>`
  }).join('');
  $('count').textContent=`（${batch.length}件）`;
